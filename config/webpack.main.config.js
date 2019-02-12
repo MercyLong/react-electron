@@ -2,7 +2,7 @@
  * @Author: Jacky.LiangXiang
  * @Date: 2019-01-24 20:37:50
  * @Last Modified by: Jacky.LiangXiang
- * @Last Modified time: 2019-01-24 22:16:43
+ * @Last Modified time: 2019-01-25 11:03:03
  */
 
 /**
@@ -12,7 +12,7 @@
 const path = require("path");
 const webpack = require("webpack");
 
-let mainWebpackConfig = {
+let mainProcessWebpackConfig = {
   entry: {
     main: path.join(__dirname, "../src/main/index.js")
   },
@@ -45,4 +45,4 @@ let mainWebpackConfig = {
   target: "electron-main"
 };
 
-module.exports = mainWebpackConfig;
+module.exports = mainProcessWebpackConfig;

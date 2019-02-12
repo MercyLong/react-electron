@@ -2,7 +2,7 @@
  * @Author: Jacky.LiangXiang
  * @Date: 2019-01-24 20:26:58
  * @Last Modified by: Jacky.LiangXiang
- * @Last Modified time: 2019-01-24 22:21:18
+ * @Last Modified time: 2019-02-12 15:44:05
  */
 
 const { say } = require("cfonts");
@@ -11,7 +11,10 @@ const chalk = require("chalk");
 const webpack = require("webpack");
 const electron = require("electron");
 const { spawn } = require("child_process");
+const webpackHotMiddleware = require("webpack-hot-middleware");
+const WebpackDevServer = require("webpack-dev-server");
 const mainWebpackConfig = require("../config/webpack.main.config");
+const renderWebpackConfig = require("../config/webpack.render.config");
 say("Hello World", {
   colors: ["yellow"],
   font: "simple",
@@ -48,6 +51,50 @@ function logStats(proc, data) {
 
   console.log(log);
 }
+// BootStrap The Render Process
+
+function StartRenderProcess() {
+  return new Promise((resolve, reject) => {
+    renderWebpackConfig.entry.render = [
+      path.join(__dirname, "dev-client")
+    ].concat(renderWebpackConfig.entry.render);
+    renderWebpackConfig.mode = "development";
+    const compiler = webpack(renderWebpackConfig);
+    hotMiddleware = webpackHotMiddleware(compiler, {
+      log: false,
+      heartbeat: 2500
+    });
+
+    compiler.hooks.compilation.tap("compilation", compilation => {
+      compilation.hooks.htmlWebpackPluginAfterEmit.tapAsync(
+        "html-webpack-plugin-after-emit",
+        (data, cb) => {
+          hotMiddleware.publish({
+            action: "reload"
+          });
+          cb();
+        }
+      );
+    });
+
+    compiler.hooks.done.tap("done", stats => {
+      logStats("Renderer", stats);
+    });
+
+    const server = new WebpackDevServer(compiler, {
+      contentBase: path.join(__dirname, "../"),
+      quiet: true,
+      before(app, ctx) {
+        app.use(hotMiddleware);
+        ctx.middleware.waitUntilValid(() => {
+          resolve();
+        });
+      }
+    });
+    server.listen(9080);
+  });
+}
+
 // BootStrap The Main Process (Node Process)
 function StartMainProcess() {
   return new Promise((resolve, reject) => {
@@ -73,7 +120,7 @@ function StartMainProcess() {
         manualRestart = true;
         process.kill(electronProcess.pid);
         electronProcess = null;
-        // startElectron();
+        StartElectron();
         setTimeout(() => {
           manualRestart = false;
         }, 5000);
@@ -97,12 +144,8 @@ function StartElectron() {
   }
   electronProcess = spawn(electron, args);
 
-  electronProcess.stdout.on("data", data => {
-    console.log(data);
-  });
-  electronProcess.stderr.on("data", data => {
-    console.log(data);
-  });
+  electronProcess.stdout.on("data", data => {});
+  electronProcess.stderr.on("data", data => {});
 
   electronProcess.on("close", () => {
     if (!manualRestart) process.exit();
@@ -110,9 +153,8 @@ function StartElectron() {
 }
 
 function BootStrap() {
-  Promise.all([StartMainProcess()]).then(() => {
-    // StartElectron();
-    console.log("SUCCEDDD");
+  Promise.all([StartMainProcess(), StartRenderProcess()]).then(() => {
+    StartElectron();
   });
 }
 try {
