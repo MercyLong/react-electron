@@ -28,6 +28,7 @@ function createWindow() {
     useContentSize: true,
     width: 350,
     frame: false,
+    titleBarStyle: "hiddenInset",
     webPreferences: {
       webSecurity: false
     }
